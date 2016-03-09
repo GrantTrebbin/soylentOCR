@@ -479,3 +479,4 @@ if __name__ == "__main__":
     main_frame = MainApplication(root)
     root.protocol("WM_DELETE_WINDOW", lambda: close_program(root, main_frame))
     root.mainloop()
+ 
