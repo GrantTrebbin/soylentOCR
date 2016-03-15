@@ -15,7 +15,7 @@ class SuggestionLabel(tkinter.ttk.Label):
     # Load a list of suggestion and then display them
     # Limited to 10 suggestions
     def update_suggestions(self, new_suggestions):
-        self.suggestions = new_suggestions[0:10]
+        self.suggestions = new_suggestions[0:3]
         self.display_suggestions()
 
     # Create and display a string that contains suggestions numbered
@@ -197,6 +197,12 @@ class MainApplication(tkinter.ttk.Frame):
             self.parent.bind("".join("<Control-Key-" + str(i) + ">"),
                              self.pick_suggestion)
 
+        # Bind Enter key to enable selection of first option
+        self.parent.bind("<Return>", self.pick_suggestion)
+
+        # Bind Shift-Delete to clear the entry box
+        self.parent.bind("<Shift-Delete>", self.clear_entry)
+
         # Initialise status frame
         self.status_frame = tkinter.ttk.Frame(self)
         self.status_frame.configure(height=80)
@@ -236,13 +242,24 @@ class MainApplication(tkinter.ttk.Frame):
         # Give focus to an entry box
         self.change_entry_offset(0)
 
+    # Clear the currently selected entry box
+    def clear_entry(self, event):
+        if event.keycode == 46:
+            self.entry_rows[self.currentEntryField].clear()
+
     # Set the current Entry Field to a suggestion selected with the
     # key combination of control + <number>
     def pick_suggestion(self, event):
-        test = (event.keycode-49) % 10 + 1
+
+        # If enter key is pressed select first suggestion
+        if event.keycode == 13:
+            index = 1
+        else:
+            index = (event.keycode-49) % 10 + 1
+
         try:
             self.entry_rows[self.currentEntryField].\
-                set(self.suggestion_label.get_suggestion(test - 1))
+                set(self.suggestion_label.get_suggestion(index - 1))
         except IndexError as e:
             # If a suggestion that doesn't exist is selected, just ignore it
             pass
@@ -479,4 +496,3 @@ if __name__ == "__main__":
     main_frame = MainApplication(root)
     root.protocol("WM_DELETE_WINDOW", lambda: close_program(root, main_frame))
     root.mainloop()
- 
