@@ -11,9 +11,14 @@ class SuggestionLabel(tkinter.ttk.Label):
         self.suggestions = suggestions
         tkinter.ttk.Label.__init__(self, parent, **kwargs)
         self.display_suggestions()
+        self.suggestion_string = ''
+
+    def __str__(self):
+        return_string = self.suggestion_string
+        return return_string
 
     # Load a list of suggestion and then display them
-    # Limited to 10 suggestions
+    # Limited to 3 suggestions
     def update_suggestions(self, new_suggestions):
         self.suggestions = new_suggestions[0:3]
         self.display_suggestions()
@@ -21,11 +26,15 @@ class SuggestionLabel(tkinter.ttk.Label):
     # Create and display a string that contains suggestions numbered
     # 1 2 3 4 5 6 7 8 9 0 to correspond with keyboard layout
     def display_suggestions(self):
-        suggestion_string = ''.join([str((i+1) % 10) + "  " + (str(x) + '\n\n')
-                                     for i, x in enumerate(self.suggestions)])
-        if suggestion_string == '':
-            suggestion_string = 'no suggestions'
-        self.config(text=suggestion_string)
+        self.suggestion_string = ''.join([str((i+1) % 10) +
+                                          "  " +
+                                          (str(x) +
+                                           '\n')
+                                          for i, x in
+                                          enumerate(self.suggestions)])
+        if self.suggestion_string == '':
+            self.suggestion_string = 'no suggestions'
+        self.config(text=self.suggestion_string)
 
     # Return a suggestion specified by an index
     # index 0 1 2 3 4 5 6 7 8 9 will return suggestion
@@ -130,7 +139,7 @@ class MainApplication(tkinter.ttk.Frame):
         self.entry_frame.configure(width=200)
         self.entry_frame.grid_propagate(False)
 
-        # Highlights an entry filed are stored in an EntryRow object
+        # Highlights and entry field are stored in an EntryRow object
         self.entry_rows = []
         for i in range(0, self.numberOfEntryFields):
 
@@ -181,16 +190,19 @@ class MainApplication(tkinter.ttk.Frame):
         self.entry_frame.columnconfigure(1, weight=1)
         self.entry_frame.columnconfigure(2, weight=0)
 
-        # Initialise the suggestion frame
-        self.suggestion_frame = tkinter.ttk.Frame(self)
-        self.suggestion_frame.configure(width=200)
-        self.suggestion_frame.grid_propagate(False)
-
-        # Configure suggestion label
+        # Configure the suggestion frame and label
+        self.suggestion_frame = tkinter.Frame(self.entry_frame)
         self.suggestion_label = SuggestionLabel(self.suggestion_frame,
                                                 [],
-                                                text="test2")
-        self.suggestion_label.grid(row=0, column=0)
+                                                text="",
+                                                background='cyan',
+                                                anchor='nw')
+        self.suggestion_label.grid(in_=self.suggestion_frame,
+                                   column=0,
+                                   row=0,
+                                   sticky='nsw')
+        self.suggestion_frame.columnconfigure(0, weight=0)
+        self.suggestion_frame.rowconfigure(0, weight=0)
 
         # Bind Control modified number keys - may not work on macs
         for i in range(10):
@@ -203,20 +215,20 @@ class MainApplication(tkinter.ttk.Frame):
         # Bind Shift-Delete to clear the entry box
         self.parent.bind("<Shift-Delete>", self.clear_entry)
 
-        # Initialise status frame
-        self.status_frame = tkinter.ttk.Frame(self)
-        self.status_frame.configure(height=80)
-        self.status_frame.grid_propagate(False)
-        self.status_label = tkinter.ttk.Label(self.status_frame,
+        # Initialise status label
+        self.status_label = tkinter.ttk.Label(self.entry_frame,
                                               text="",
-                                              background='light blue',
+                                              background='magenta',
                                               anchor='nw')
-        self.status_frame.rowconfigure(0, weight=1)
-        self.status_frame.columnconfigure(0, weight=1)
-        self.status_label.grid(in_=self.status_frame,
+        self.status_label.grid(in_=self.entry_frame,
                                column=0,
-                               row=0,
-                               sticky='nsew')
+                               row=self.numberOfEntryFields + 1,
+                               sticky='nsew',
+                               columnspan=3)
+        self.entry_frame.rowconfigure(self.numberOfEntryFields + 1, minsize=70)
+
+        # Makes sure suggestion label is above status label
+        self.status_label.lower()
 
         # Key events
         self.parent.bind("<Down>", self.down_pressed)
@@ -225,15 +237,12 @@ class MainApplication(tkinter.ttk.Frame):
 
         # Order of image, entry, suggestion and status frames
         self.image_frame.grid(column=0, row=0, sticky="nwse", rowspan=2)
-        self.entry_frame.grid(column=1, row=0, sticky="ns", rowspan=2)
-        self.suggestion_frame.grid(column=2, row=0, sticky='ns')
-        self.status_frame.grid(column=2, row=1, sticky='ew')
+        self.entry_frame.grid(column=1, row=0, sticky="ns")
 
         # Column padding between image, entry and search frames
         # Allow row zero and column zero to resize
-        self.columnconfigure(0, pad=10, weight=1)
-        self.columnconfigure(1, pad=10, weight=0)
-        self.columnconfigure(2, pad=10, weight=0)
+        self.columnconfigure(0, pad=0, weight=1)
+        self.columnconfigure(1, pad=0, weight=0)
         self.rowconfigure(0, weight=1)
 
         # Display current record
@@ -260,6 +269,7 @@ class MainApplication(tkinter.ttk.Frame):
         try:
             self.entry_rows[self.currentEntryField].\
                 set(self.suggestion_label.get_suggestion(index - 1))
+            self.change_entry_offset(1)
         except IndexError as e:
             # If a suggestion that doesn't exist is selected, just ignore it
             pass
@@ -279,7 +289,7 @@ class MainApplication(tkinter.ttk.Frame):
         current_search = self.entry_rows[self.currentEntryField].\
             entry.get().split()
 
-        # If entry box is empty all suggestions all valid
+        # If entry box is empty all suggestions are valid
         if len(current_search) == 0:
             temporary_suggestions = self.suggestion_search
         else:
@@ -311,6 +321,11 @@ class MainApplication(tkinter.ttk.Frame):
         self.currentEntryField = row_number
         self.entry_rows[row_number].active(True)
         self.refresh_suggestions()
+        self.suggestion_frame.place(relx=0,
+                                    rely=1,
+                                    relwidth=1,
+                                    bordermode='outside',
+                                    in_=self.entry_rows[row_number].entry)
 
     # When an Entry loses focus, deactivate the Entry box
     def entry_focus_out(self, event, row_number):
@@ -323,6 +338,7 @@ class MainApplication(tkinter.ttk.Frame):
     # If the down key is pressed move to the Entry box below the current one
     def down_pressed(self, event):
         self.change_entry_offset(1)
+        return 'break'
 
     # When the tab key is pressed go forward or back one record.
     # Direction depends on if the shift key is depressed.
